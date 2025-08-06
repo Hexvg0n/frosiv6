@@ -134,7 +134,7 @@ export default function TrackingPage() {
                 <PackageSearch className="w-10 h-10 text-purple-400" />
               </div>
             </div>
-            <h1 className="text-5xl font-bold mb-4 text-white">Package Tracking</h1>
+            <h1 className="text-5xl font-bold mb-4 text-white">Tracking Paczek</h1>
             <p className="text-gray-400 max-w-2xl mx-auto">
               Enter your tracking number to see the latest updates on your shipment.
             </p>

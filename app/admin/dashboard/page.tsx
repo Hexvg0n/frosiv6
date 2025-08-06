@@ -1,3 +1,4 @@
+// app/admin/dashboard/page.tsx
 import { getProducts } from "@/lib/data"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -27,7 +28,6 @@ export default async function AdminDashboard() {
             <TableRow className="border-gray-700 hover:bg-gray-800/50">
               <TableHead>Image</TableHead>
               <TableHead>Name</TableHead>
-              <TableHead>Category</TableHead>
               <TableHead>Price</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -45,7 +45,6 @@ export default async function AdminDashboard() {
                   />
                 </TableCell>
                 <TableCell className="font-medium">{product.name}</TableCell>
-                <TableCell>{product.category}</TableCell>
                 <TableCell>{product.price.toLocaleString("pl-PL", { style: "currency", currency: "PLN" })}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex gap-2 justify-end">

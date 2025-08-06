@@ -1,3 +1,4 @@
+// components/admin/item-form.tsx
 "use client"
 
 import { useFormStatus } from "react-dom"
@@ -36,10 +37,6 @@ export function ItemForm({
           <div className="space-y-2">
             <Label htmlFor="name">Product Name</Label>
             <Input id="name" name="name" defaultValue={item?.name} required />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="category">Category</Label>
-            <Input id="category" name="category" defaultValue={item?.category} required />
           </div>
           <div className="space-y-2">
             <Label htmlFor="price">Price (in PLN)</Label>

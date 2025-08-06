@@ -1,45 +1,60 @@
-import type { Product } from "./mock-db"
+// lib/data.ts
+import dbConnect from './mongodb';
+import ProductModel, { ProductType } from '@/models/Product';
+import { revalidatePath } from 'next/cache';
 
-// This file is now an API client. It fetches data from our API routes.
-// This abstracts away the data source from the rest of the application.
+export type { ProductType as Product };
 
-const getBaseUrl = () => process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+type ProductInput = Omit<ProductType, '_id' | 'id'>;
 
-export async function getProducts(): Promise<Product[]> {
-  const res = await fetch(`${getBaseUrl()}/api/products`, { cache: "no-store" })
-  if (!res.ok) throw new Error("Failed to fetch products")
-  return res.json()
+const serializeProduct = (doc: any): ProductType => {
+  const obj = doc.toObject ? doc.toObject() : doc;
+  return {
+    ...obj,
+    _id: obj._id.toString(),
+    id: obj._id.toString(),
+  };
+};
+
+export async function getProducts(): Promise<ProductType[]> {
+  await dbConnect();
+  const products = await ProductModel.find({}).lean();
+  return products.map(p => ({ ...p, _id: p._id.toString(), id: p._id.toString() }));
 }
 
-export async function getProductById(id: string): Promise<Product | undefined> {
-  const res = await fetch(`${getBaseUrl()}/api/products/${id}`, { cache: "no-store" })
-  if (!res.ok) return undefined
-  return res.json()
+export async function getProductById(id: string): Promise<ProductType | null> {
+  await dbConnect();
+  try {
+    const product = await ProductModel.findById(id).lean();
+    if (!product) return null;
+    return { ...product, _id: product._id.toString(), id: product._id.toString() };
+  } catch (error) {
+    return null;
+  }
 }
 
-export async function addProduct(product: Omit<Product, "id">): Promise<Product> {
-  const res = await fetch(`${getBaseUrl()}/api/products`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(product),
-  })
-  if (!res.ok) throw new Error("Failed to add product")
-  return res.json()
+export async function addProduct(productData: ProductInput): Promise<ProductType> {
+  await dbConnect();
+  const newProduct = await ProductModel.create(productData);
+  revalidatePath('/admin/dashboard');
+  revalidatePath('/w2c');
+  return serializeProduct(newProduct);
 }
 
-export async function updateProduct(id: string, data: Partial<Product>): Promise<Product> {
-  const res = await fetch(`${getBaseUrl()}/api/products/${id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  })
-  if (!res.ok) throw new Error("Failed to update product")
-  return res.json()
+export async function updateProduct(id: string, data: Partial<ProductInput>): Promise<ProductType | null> {
+  await dbConnect();
+  const updatedProduct = await ProductModel.findByIdAndUpdate(id, data, { new: true }).lean();
+  if (!updatedProduct) return null;
+  revalidatePath('/admin/dashboard');
+  revalidatePath('/w2c');
+  revalidatePath(`/admin/edit-item/${id}`);
+  return { ...updatedProduct, _id: updatedProduct._id.toString(), id: updatedProduct._id.toString() };
 }
 
-export async function deleteProduct(id: string): Promise<void> {
-  const res = await fetch(`${getBaseUrl()}/api/products/${id}`, {
-    method: "DELETE",
-  })
-  if (!res.ok) throw new Error("Failed to delete product")
+export async function deleteProduct(id: string): Promise<boolean> {
+  await dbConnect();
+  const result = await ProductModel.deleteOne({ _id: id });
+  revalidatePath('/admin/dashboard');
+  revalidatePath('/w2c');
+  return result.deletedCount === 1;
 }

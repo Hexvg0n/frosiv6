@@ -12,11 +12,13 @@ const HeroSection = () => (
   <section className="relative container mx-auto flex flex-col items-center justify-center text-center min-h-[calc(100vh-80px)] px-4">
     <AnimatedSection>
       <h1 className="text-5xl md:text-7xl font-extrabold tracking-tighter text-white mb-4">
-        Your Universe of Fashion Finds
+        Jedyna Platforma W2C 
+      </h1>
+        <h1 className="text-5xl md:text-7xl font-extrabold tracking-tighter text-white mb-4">
+        Której Potrzebowałeś 
       </h1>
       <p className="max-w-2xl mx-auto text-lg md:text-xl text-gray-400 mb-8">
-        Discover, convert, and track the best replica items from Taobao, Weidian, and 1688. All tailored for the Polish
-        market.
+        Frosireps to najstarsze polskie community, które spopularyzowało temat replik w Polsce i odkryło do dziś najlepszego agenta, czyli KakoBuy. Dokładamy wszelkich starań, abyś doznał jak najlepszych wrażeń i jakości podczas zamawiania z Chin.
       </p>
       <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
         <Button
@@ -24,7 +26,7 @@ const HeroSection = () => (
           className="bg-purple-600 text-white hover:bg-purple-700 rounded-full px-8 py-6 text-lg font-semibold shadow-[0_0_20px_theme(colors.purple.600)] transition-shadow hover:shadow-[0_0_30px_theme(colors.purple.500)]"
         >
           <Rocket className="mr-2 h-5 w-5" />
-          Start Exploring
+          Zacznij już dziś
         </Button>
       </motion.div>
     </AnimatedSection>
@@ -33,26 +35,26 @@ const HeroSection = () => (
 
 const tools = [
   {
-    title: "W2C Lists",
-    description: "Browse curated lists and find the best sellers from the community.",
+    title: "W2C",
+    description: "Przeglądaj listę najlepiej wyselekcjonowanych produktów.",
     href: "/w2c",
     icon: ShoppingCart,
   },
   {
     title: "QC Finder",
-    description: "Check quality control photos from other buyers before you purchase.",
+    description: "Sprawdzaj jakość itemów przed ich kupieniem.",
     href: "/qc-finder",
     icon: Camera,
   },
   {
     title: "Link Converter",
-    description: "Convert any product link into an affiliate link for your agent.",
+    description: "Przekonweruj każdy link na agenta który ci odpowiada.",
     href: "/converter",
     icon: LinkIcon,
   },
   {
-    title: "Package Tracking",
-    description: "Track your shipments in real-time from warehouse to your doorstep.",
+    title: "Tracking Paczek",
+    description: "Śledź statusy swoich paczek bez opóźnień.",
     href: "/tracking",
     icon: PackageSearch,
   },
@@ -62,9 +64,9 @@ const FeaturedToolsSection = () => (
   <section id="tools" className="py-20">
     <AnimatedSection>
       <div className="container mx-auto px-4">
-        <h2 className="text-4xl font-bold text-center mb-2 text-white">Featured Tools</h2>
+        <h2 className="text-4xl font-bold text-center mb-2 text-white">Wyróźnione Narzędzia</h2>
         <p className="text-center text-gray-400 mb-12 max-w-2xl mx-auto">
-          Everything you need for your replica fashion journey, all in one place.
+          Wszystko czego potrzebujesz w jendym miejscu.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {tools.map((tool) => (
