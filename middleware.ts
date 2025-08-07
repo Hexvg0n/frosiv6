@@ -5,12 +5,17 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const isAdminAuth = request.cookies.has("admin-auth")
 
-  // If trying to access a protected admin route without auth, redirect to login
+  // Jeśli zalogowany użytkownik wejdzie na /admin, przekieruj go do /admin/dashboard
+  if (pathname === "/admin" && isAdminAuth) {
+    return NextResponse.redirect(new URL("/admin/dashboard", request.url))
+  }
+
+  // Jeśli niezalogowany użytkownik próbuje wejść na chronioną ścieżkę, przekieruj go do logowania
   if (pathname.startsWith("/admin") && !pathname.startsWith("/admin/login") && !isAdminAuth) {
     return NextResponse.redirect(new URL("/admin/login", request.url))
   }
 
-  // If trying to access login page while already authenticated, redirect to dashboard
+  // Jeśli zalogowany użytkownik próbuje wejść na stronę logowania, przekieruj go do panelu
   if (pathname.startsWith("/admin/login") && isAdminAuth) {
     return NextResponse.redirect(new URL("/admin/dashboard", request.url))
   }

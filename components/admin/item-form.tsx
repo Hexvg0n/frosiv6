@@ -43,6 +43,10 @@ export function ItemForm({
             <Input id="price" name="price" type="number" step="0.01" defaultValue={item?.price} required />
           </div>
           <div className="space-y-2">
+            <Label htmlFor="category">Category</Label>
+            <Input id="category" name="category" defaultValue={item?.category} required />
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="imageUrl">Image URL</Label>
             <Input id="imageUrl" name="imageUrl" defaultValue={item?.imageUrl} required />
           </div>

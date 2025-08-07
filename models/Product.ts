@@ -7,6 +7,7 @@ interface ProductBase {
   price: number;
   imageUrl: string;
   w2cLink: string;
+  category: string; // Dodane pole kategorii
 }
 
 // Interfejs dokumentu Mongoose
@@ -23,6 +24,7 @@ const ProductSchema: Schema<IProduct> = new Schema({
   price: { type: Number, required: [true, 'Please provide a price.'] },
   imageUrl: { type: String, required: [true, 'Please provide an image URL.'] },
   w2cLink: { type: String, required: [true, 'Please provide a W2C link.'] },
+  category: { type: String, required: [true, 'Please provide a category.'] }, // Dodane pole do schematu
 });
 
 const ProductModel: Model<IProduct> = models.Product || mongoose.model<IProduct>('Product', ProductSchema);

@@ -1,7 +1,6 @@
 // lib/data.ts
 import dbConnect from './mongodb';
 import ProductModel, { ProductType } from '@/models/Product';
-import { revalidatePath } from 'next/cache';
 
 export type { ProductType as Product };
 
@@ -36,8 +35,6 @@ export async function getProductById(id: string): Promise<ProductType | null> {
 export async function addProduct(productData: ProductInput): Promise<ProductType> {
   await dbConnect();
   const newProduct = await ProductModel.create(productData);
-  revalidatePath('/admin/dashboard');
-  revalidatePath('/w2c');
   return serializeProduct(newProduct);
 }
 
@@ -45,16 +42,11 @@ export async function updateProduct(id: string, data: Partial<ProductInput>): Pr
   await dbConnect();
   const updatedProduct = await ProductModel.findByIdAndUpdate(id, data, { new: true }).lean();
   if (!updatedProduct) return null;
-  revalidatePath('/admin/dashboard');
-  revalidatePath('/w2c');
-  revalidatePath(`/admin/edit-item/${id}`);
   return { ...updatedProduct, _id: updatedProduct._id.toString(), id: updatedProduct._id.toString() };
 }
 
 export async function deleteProduct(id: string): Promise<boolean> {
   await dbConnect();
   const result = await ProductModel.deleteOne({ _id: id });
-  revalidatePath('/admin/dashboard');
-  revalidatePath('/w2c');
   return result.deletedCount === 1;
 }
