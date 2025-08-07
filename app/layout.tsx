@@ -10,9 +10,8 @@ import { SiteFooter } from "@/components/layout/site-footer"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "FrosiReps - Your Gateway to Fashion Replicas",
-  description: "Source and purchase replica fashion from Taobao, Weidian, and 1688, tailored for the Polish market.",
-    generator: 'v0.dev'
+  title: "FrosiReps ",
+  description: "Najlepsza repowa polska społeczność.",
 }
 
 export default function RootLayout({
