@@ -6,7 +6,7 @@ import { redirect } from "next/navigation"
 import { addProduct, deleteProduct, updateProduct, type Product } from "@/lib/data"
 import { revalidatePath } from "next/cache"
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "password123";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 export async function login(prevState: { error: string } | undefined, formData: FormData) {
   const password = formData.get("password");

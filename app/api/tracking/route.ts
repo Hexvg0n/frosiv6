@@ -1,3 +1,5 @@
+// app/api/tracking/route.ts
+
 import { NextResponse } from "next/server"
 import axios from "axios"
 import * as cheerio from "cheerio"
@@ -34,7 +36,7 @@ function normalizeLabel(label: string): string {
   for (const [key, variants] of Object.entries(LABEL_NORMALIZATION)) {
     if (variants.some((v) => lowerLabel.includes(v))) return key
   }
-  return lowerLabel.replace(/\s+/g, "") // Fallback to a camelCase-like format
+  return lowerLabel.replace(/\s+/g, "")
 }
 
 const translationCache = new Map<string, string>()
@@ -51,11 +53,12 @@ async function translateWithCache(status: string): Promise<string> {
   }
 
   try {
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    // Dodano minimalne opóźnienie, aby uniknąć rate limiting
+    await new Promise((resolve) => setTimeout(resolve, 200))
     const response = await axios.post(
       "https://api-free.deepl.com/v2/translate",
       new URLSearchParams({ auth_key: apiKey, text: status, target_lang: "PL" }),
-      { headers: { "Content-Type": "application/x-www-form-urlencoded" }, timeout: 10000 },
+      { headers: { "Content-Type": "application/x-www-form-urlencoded" }, timeout: 5000 },
     )
     const translatedText = response.data.translations[0].text
     translationCache.set(status, translatedText)
@@ -64,6 +67,66 @@ async function translateWithCache(status: string): Promise<string> {
     console.error("Błąd tłumaczenia DeepL:", error instanceof Error ? error.message : "Unknown error")
     return status
   }
+}
+
+async function tryFetchTrackingData(url: string, trackingNumber: string): Promise<TrackingData | null> {
+    const response = await axios.post(url, new URLSearchParams({ documentCode: trackingNumber }), {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        timeout: 3000,
+    });
+
+    const $ = cheerio.load(response.data);
+    const details: TrackingEvent[] = [];
+
+    $("table tr").each((_, row) => {
+        const cells = $(row).find("td");
+        if (cells.length >= 3) {
+            details.push({
+                date: $(cells[0]).text().trim(),
+                location: $(cells[1]).text().trim(),
+                status: $(cells[2]).text().trim(),
+            });
+        }
+    });
+
+    if (details.length > 0) {
+        const mainInfo: { [key: string]: string } = {};
+        const labels: string[] = [];
+        const values: string[] = [];
+
+        // POPRAWKA TUTAJ: Użyto jawnego bloku, aby uniknąć zwracania wartości z .push()
+        $("div.menu_ > ul").first().find("li").each((_, el) => { labels.push($(el).text().trim()) });
+        $("div.menu_ > ul").eq(1).find("li").each((_, el) => { values.push($(el).text().trim()) });
+
+        labels.forEach((label, index) => {
+            const normalized = normalizeLabel(label);
+            mainInfo[normalized] = values[index] || "";
+        });
+        
+        const translatedDetails = await Promise.all(
+            details.map(async (event) => ({
+                ...event,
+                status: await translateWithCache(event.status),
+            })),
+        );
+        
+        const lastStatus = mainInfo.lastStatus 
+            ? await translateWithCache(mainInfo.lastStatus) 
+            : translatedDetails[translatedDetails.length - 1]?.status || "Brak statusu";
+
+        return {
+            trackingNumber: mainInfo.trackingNumber || trackingNumber,
+            referenceNo: mainInfo.referenceNo || "N/A",
+            country: mainInfo.country || "N/A",
+            date: mainInfo.date || "N/A",
+            lastStatus: lastStatus,
+            consigneeName: mainInfo.consigneeName || "N/A",
+            details: translatedDetails,
+            source: url,
+        };
+    }
+
+    return null;
 }
 
 export async function POST(req: Request) {
@@ -75,75 +138,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid or missing trackingNumber" }, { status: 400 })
     }
 
-    for (const url of TRACKING_URLS) {
-      try {
-        const response = await axios.post(url, new URLSearchParams({ documentCode: trackingNumber }), {
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          timeout: 5000,
+    const promises = TRACKING_URLS.map(url => 
+        tryFetchTrackingData(url, trackingNumber).catch(error => {
+            console.warn(`Błąd podczas sprawdzania ${url}:`, (error as Error).message);
+            return null;
         })
+    );
+    
+    const results = await Promise.all(promises);
+    const successfulResult = results.find(result => result !== null);
 
-        const $ = cheerio.load(response.data)
-        const details: TrackingEvent[] = []
-
-        $("table tr").each((_, row) => {
-          const cells = $(row).find("td")
-          // **FIX**: Removed the overly strict `if (date && status)` check.
-          // Now we only check if the row has the expected number of columns.
-          if (cells.length >= 3) {
-            details.push({
-              date: $(cells[0]).text().trim(),
-              location: $(cells[1]).text().trim(),
-              status: $(cells[2]).text().trim(),
-            })
-          }
-        })
-
-        if (details.length > 0) {
-          const mainInfo: { [key: string]: string } = {}
-          const labels: string[] = []
-          const values: string[] = []
-
-          $("div.menu_ > ul")
-            .first()
-            .find("li")
-            .each((_, el) => labels.push($(el).text().trim()))
-          $("div.menu_ > ul")
-            .eq(1)
-            .find("li")
-            .each((_, el) => values.push($(el).text().trim()))
-
-          labels.forEach((label, index) => {
-            const normalized = normalizeLabel(label)
-            mainInfo[normalized] = values[index] || ""
-          })
-
-          const translatedDetails = await Promise.all(
-            details.map(async (event) => ({
-              ...event,
-              status: await translateWithCache(event.status),
-            })),
-          )
-
-          const lastStatus = mainInfo.lastStatus
-            ? await translateWithCache(mainInfo.lastStatus)
-            : translatedDetails[translatedDetails.length - 1].status
-
-          const result: TrackingData = {
-            trackingNumber: mainInfo.trackingNumber || trackingNumber,
-            referenceNo: mainInfo.referenceNo || "N/A",
-            country: mainInfo.country || "N/A",
-            date: mainInfo.date || "N/A",
-            lastStatus: lastStatus,
-            consigneeName: mainInfo.consigneeName || "N/A",
-            details: translatedDetails,
-            source: url,
-          }
-
-          return NextResponse.json(result, { status: 200 })
-        }
-      } catch (error) {
-        console.warn(`Błąd podczas sprawdzania ${url}:`, (error as Error).message)
-      }
+    if (successfulResult) {
+        return NextResponse.json(successfulResult, { status: 200 });
     }
 
     return NextResponse.json({ error: "Nie znaleziono danych śledzenia na żadnym serwerze." }, { status: 404 })
