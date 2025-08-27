@@ -1,10 +1,11 @@
 // app/api/tracking/route.ts
 
-import { NextResponse } from "next/server"
-import axios from "axios"
-import * as cheerio from "cheerio"
-import type { TrackingData, TrackingEvent } from "@/types/tracking"
+import { NextResponse } from "next/server";
+import axios from "axios";
+import * as cheerio from "cheerio";
+import type { TrackingData, TrackingEvent } from "@/types/tracking";
 
+// ... (stałe TRACKING_URLS i LABEL_NORMALIZATION bez zmian)
 const TRACKING_URLS = [
   "http://106.55.5.75:8082/en/trackIndex.htm",
   "http://114.132.51.252:8082/en/trackIndex.htm",
@@ -20,53 +21,18 @@ const TRACKING_URLS = [
   "http://49.234.188.236:8082/trackIndex.htm",
   "http://115.29.184.71:8082/trackIndex.htm",
   "http://114.132.51.252:8082/trackIndex.htm",
-]
-
+];
 const LABEL_NORMALIZATION: { [key: string]: string[] } = {
-  trackingNumber: ["tracking number", "numer śledzenia"],
-  referenceNo: ["reference no.", "numer referencyjny"],
-  country: ["country", "kraj"],
-  date: ["date", "data"],
-  lastStatus: ["the last record", "ostatni status"],
-  consigneeName: ["consigneename", "odbiorca"],
-}
+    trackingNumber: ["tracking number"], referenceNo: ["reference no."], country: ["country"],
+    date: ["date"], lastStatus: ["the last record"], consigneeName: ["consigneename"],
+};
 
 function normalizeLabel(label: string): string {
-  const lowerLabel = label.toLowerCase().trim()
-  for (const [key, variants] of Object.entries(LABEL_NORMALIZATION)) {
-    if (variants.some((v) => lowerLabel.includes(v))) return key
-  }
-  return lowerLabel.replace(/\s+/g, "")
-}
-
-const translationCache = new Map<string, string>()
-
-async function translateWithCache(status: string): Promise<string> {
-  if (!status) return ""
-  if (translationCache.has(status)) {
-    return translationCache.get(status)!
-  }
-
-  const apiKey = process.env.DEEPL_API_KEY
-  if (!apiKey) {
-    return status
-  }
-
-  try {
-    // Dodano minimalne opóźnienie, aby uniknąć rate limiting
-    await new Promise((resolve) => setTimeout(resolve, 200))
-    const response = await axios.post(
-      "https://api-free.deepl.com/v2/translate",
-      new URLSearchParams({ auth_key: apiKey, text: status, target_lang: "PL" }),
-      { headers: { "Content-Type": "application/x-www-form-urlencoded" }, timeout: 5000 },
-    )
-    const translatedText = response.data.translations[0].text
-    translationCache.set(status, translatedText)
-    return translatedText
-  } catch (error) {
-    console.error("Błąd tłumaczenia DeepL:", error instanceof Error ? error.message : "Unknown error")
-    return status
-  }
+    const lowerLabel = label.toLowerCase().trim();
+    for (const [key, variants] of Object.entries(LABEL_NORMALIZATION)) {
+        if (variants.some(v => lowerLabel.includes(v))) return key;
+    }
+    return lowerLabel.replace(/\s+/g, "");
 }
 
 async function tryFetchTrackingData(url: string, trackingNumber: string): Promise<TrackingData | null> {
@@ -77,7 +43,6 @@ async function tryFetchTrackingData(url: string, trackingNumber: string): Promis
 
     const $ = cheerio.load(response.data);
     const details: TrackingEvent[] = [];
-
     $("table tr").each((_, row) => {
         const cells = $(row).find("td");
         if (cells.length >= 3) {
@@ -92,69 +57,49 @@ async function tryFetchTrackingData(url: string, trackingNumber: string): Promis
     if (details.length > 0) {
         const mainInfo: { [key: string]: string } = {};
         const labels: string[] = [];
+        $("div.menu_ > ul").first().find("li").each((_, el) => { labels.push($(el).text().trim()); });
         const values: string[] = [];
-
-        // POPRAWKA TUTAJ: Użyto jawnego bloku, aby uniknąć zwracania wartości z .push()
-        $("div.menu_ > ul").first().find("li").each((_, el) => { labels.push($(el).text().trim()) });
-        $("div.menu_ > ul").eq(1).find("li").each((_, el) => { values.push($(el).text().trim()) });
+        $("div.menu_ > ul").eq(1).find("li").each((_, el) => { values.push($(el).text().trim()); });
 
         labels.forEach((label, index) => {
-            const normalized = normalizeLabel(label);
-            mainInfo[normalized] = values[index] || "";
+            mainInfo[normalizeLabel(label)] = values[index] || "";
         });
-        
-        const translatedDetails = await Promise.all(
-            details.map(async (event) => ({
-                ...event,
-                status: await translateWithCache(event.status),
-            })),
-        );
-        
-        const lastStatus = mainInfo.lastStatus 
-            ? await translateWithCache(mainInfo.lastStatus) 
-            : translatedDetails[translatedDetails.length - 1]?.status || "Brak statusu";
 
         return {
             trackingNumber: mainInfo.trackingNumber || trackingNumber,
             referenceNo: mainInfo.referenceNo || "N/A",
             country: mainInfo.country || "N/A",
             date: mainInfo.date || "N/A",
-            lastStatus: lastStatus,
+            lastStatus: mainInfo.lastStatus || details[details.length - 1]?.status || "Brak statusu",
             consigneeName: mainInfo.consigneeName || "N/A",
-            details: translatedDetails,
+            details: details, // Zwracamy oryginalne, nietłumaczone statusy
             source: url,
         };
     }
-
     return null;
 }
 
 export async function POST(req: Request) {
-  try {
-    const body = await req.json()
-    const { trackingNumber } = body
+    try {
+        const { trackingNumber } = await req.json();
+        if (!trackingNumber || typeof trackingNumber !== "string") {
+            return NextResponse.json({ error: "Invalid trackingNumber" }, { status: 400 });
+        }
 
-    if (!trackingNumber || typeof trackingNumber !== "string" || trackingNumber.trim() === "") {
-      return NextResponse.json({ error: "Invalid or missing trackingNumber" }, { status: 400 })
+        const promises = TRACKING_URLS.map(url => 
+            tryFetchTrackingData(url, trackingNumber).catch(() => null)
+        );
+        
+        const results = await Promise.all(promises);
+        const successfulResult = results.find(result => result);
+
+        if (successfulResult) {
+            return NextResponse.json(successfulResult);
+        }
+
+        return NextResponse.json({ error: "Nie znaleziono danych śledzenia." }, { status: 404 });
+    } catch (error) {
+        console.error("Błąd w handlerze API:", error);
+        return NextResponse.json({ error: "Wewnętrzny błąd serwera" }, { status: 500 });
     }
-
-    const promises = TRACKING_URLS.map(url => 
-        tryFetchTrackingData(url, trackingNumber).catch(error => {
-            console.warn(`Błąd podczas sprawdzania ${url}:`, (error as Error).message);
-            return null;
-        })
-    );
-    
-    const results = await Promise.all(promises);
-    const successfulResult = results.find(result => result !== null);
-
-    if (successfulResult) {
-        return NextResponse.json(successfulResult, { status: 200 });
-    }
-
-    return NextResponse.json({ error: "Nie znaleziono danych śledzenia na żadnym serwerze." }, { status: 404 })
-  } catch (error) {
-    console.error("Błąd w handlerze API:", error)
-    return NextResponse.json({ error: "Wewnętrzny błąd serwera" }, { status: 500 })
-  }
 }
