@@ -1,4 +1,5 @@
 // app/admin/actions.ts
+
 "use server"
 
 import { cookies } from "next/headers"
@@ -6,12 +7,18 @@ import { redirect } from "next/navigation"
 import { addProduct, deleteProduct, updateProduct, type Product } from "@/lib/data"
 import { revalidatePath } from "next/cache"
 
+// POPRAWKA: Usunięto domyślne hasło. Aplikacja musi być skonfigurowana przez zmienną środowiskową.
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 export async function login(prevState: { error: string } | undefined, formData: FormData) {
+  // POPRAWKA: Sprawdzenie, czy hasło admina jest w ogóle ustawione.
+  if (!ADMIN_PASSWORD) {
+    return { error: "Aplikacja nie jest poprawnie skonfigurowana. Skontaktuj się z administratorem." };
+  }
+  
   const password = formData.get("password");
   if (password === ADMIN_PASSWORD) {
-    (await cookies()).set("admin-auth", "true", {
+    cookies().set("admin-auth", "true", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       maxAge: 60 * 60 * 24, // 1 day
@@ -19,12 +26,13 @@ export async function login(prevState: { error: string } | undefined, formData: 
     });
     redirect("/admin/dashboard");
   } else {
-    return { error: "Invalid password." };
+    return { error: "Nieprawidłowe hasło." };
   }
 }
 
+// ... reszta pliku bez zmian ...
 export async function logout() {
-  (await cookies()).delete("admin-auth");
+  cookies().delete("admin-auth");
   redirect("/admin/login");
 }
 
