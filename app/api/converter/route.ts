@@ -153,7 +153,7 @@ const middlemen: Record<string, Middleman> = {
   },
   cnfans: {
     name: "CNFans",
-    template: "https://cnfans.com/product/?shop_type={{platformDomain}}&id={{itemID}}",
+    template: "https://cnfans.com/product/?shop_type={{platformDomain}}&id={{itemID}}&ref=722682",
     platformMapping: {
       taobao: "taobao",
       "1688": "ali_1688",
@@ -171,7 +171,7 @@ const middlemen: Record<string, Middleman> = {
   },
   mulebuy: {
     name: "Mulebuy",
-    template: "https://mulebuy.com/product/?shop_type={{platformDomain}}&id={{itemID}}",
+    template: "https://mulebuy.com/product/?shop_type={{platformDomain}}&id={{itemID}}?ref=200216970",
     platformMapping: {
       taobao: "taobao",
       "1688": "ali_1688",
